@@ -2,7 +2,19 @@
 
 ## Install
 
-boo!! not done yet
+Installing SimplyReplicate is very simple. You can either download the module from the [Releases Page](https://github.com/ColRealPro/SimplyReplicate/releases) or install it using Wally.
+
+**Roblox Studio:**
+- Get the rbxm file from the [Releases Page](https://github.com/ColRealPro/SimplyReplicate/releases) and insert it into your game
+
+**Wally:**
+- Add SimplyReplicate to your `wally.toml` dependency list (e.g. `SimplyReplicate = "colrealpro/simplyreplicate@^0.1.0`)
+- Run `wally install` in your terminal
+
+:::note Wally
+Not familiar with Wally? Wally is a package manager (like NPM) for the Roblox ecosystem.
+To get started, check out the [Wally repository](https://github.com/UpliftGames/wally).
+:::
 
 ## Basic Usage
 

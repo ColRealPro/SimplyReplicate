@@ -10,5 +10,7 @@ classOrder = [
 enabled = true
 includeReadme = false
 
+gitSourceBranch = "main"
+
 [docusaurus]
 tagline = "A simple easy to use replication system for Roblox"
