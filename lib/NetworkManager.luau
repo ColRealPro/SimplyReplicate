@@ -20,13 +20,17 @@ type NetworkManagerImpl = {
 	_initialized: boolean,
 
 	new: (identifier: string | Instance) -> NetworkManager,
-	_init: (self: NetworkManager) -> (),
+	_init: () -> (),
 	listen: (self: NetworkManager, tag: string, callback: (...any?) -> nil) -> (),
 	listenToFetch: (self: NetworkManager, tag: string, callback: (player: Player, ...any?) -> any?) -> (),
 	_handleFetch: (self: NetworkManager, tag: string, data: any?) -> any?,
 	fetch: (self: NetworkManager, tag: string, data: any?) -> any?,
 	send: (self: NetworkManager, tag: string, data: any, player: { Player }?) -> (),
 	Destroy: (self: NetworkManager) -> (),
+
+	RemoteFolder: Folder,
+	Remote: RemoteEvent,
+	Fetch: RemoteFunction,
 }
 
 export type NetworkManager = typeof(setmetatable({} :: {
@@ -40,7 +44,9 @@ export type NetworkManager = typeof(setmetatable({} :: {
 	Fetch: RemoteFunction,
 }, {} :: NetworkManagerImpl))
 
-function NetworkManager:_init()
+function NetworkManager._init()
+	local self = NetworkManager
+
 	if self._initialized then
 		return
 	end
@@ -98,7 +104,7 @@ function NetworkManager.new(identifier: string | Instance): NetworkManager
 	self.Remote = self.Remote
 	self.Fetch = self.Fetch
 	
-	self:_init()
+	self._init()
 
 	ActiveNetworkManagers[identifier] = self
 
