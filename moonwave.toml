@@ -1,4 +1,5 @@
 gitRepoUrl = "https://github.com/ColRealPro/SimplyReplicate"
+gitSourceBranch = "main"
 
 title = "SimplyReplicate"
 classOrder = [
@@ -9,8 +10,6 @@ classOrder = [
 [home]
 enabled = true
 includeReadme = false
-
-gitSourceBranch = "main"
 
 [docusaurus]
 tagline = "A simple easy to use replication system for Roblox"
