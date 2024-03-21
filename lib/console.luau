@@ -1,6 +1,6 @@
 local console = {}
 local IsStudio = game:GetService("RunService"):IsStudio()
-local ShowLogs = IsStudio
+local ShowLogs = false -- IsStudio
 local TestTable = false
 
 local prefix = "[ReplicatorDebug]"
