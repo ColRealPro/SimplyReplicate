@@ -39,9 +39,6 @@ export type NetworkManager = typeof(setmetatable({} :: {
 	_fetchListeners: { [string]: (...any) -> any? },
 	_context: string,
 	_initialized: boolean,
-	RemoteFolder: Folder,
-	Remote: RemoteEvent,
-	Fetch: RemoteFunction,
 }, {} :: NetworkManagerImpl))
 
 function NetworkManager._init()
@@ -94,15 +91,11 @@ end
 function NetworkManager.new(identifier: string | Instance): NetworkManager
 	local self = setmetatable({}, NetworkManager)
 
-	
 	self._identifier = identifier
 	self._maid = Maid.new()
 	self._fetchListeners = {}
 	self._context = RunService:IsServer() and "OnServerEvent" or "OnClientEvent"
 	self._initialized = self._initialized
-	self.RemoteFolder = self.RemoteFolder
-	self.Remote = self.Remote
-	self.Fetch = self.Fetch
 	
 	self._init()
 
