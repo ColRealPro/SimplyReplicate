@@ -1,0 +1,12 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Replicator = require(ReplicatedStorage.Shared.Replicator)
+local GameStateReplicator = Replicator.new("GameState")
+
+print(GameStateReplicator)
+
+GameStateReplicator.StateChanged:Connect(function(state, value)
+	print("State changed", state, value)
+	print(GameStateReplicator:get())
+end)
+
+print(GameStateReplicator:get())

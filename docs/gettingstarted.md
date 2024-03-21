@@ -1,8 +1,11 @@
-# SimplyReplicate
+# Getting Started
 
-SimplyReplicate is a powerful, user-friendly module designed for seamless data replication between server and clients in Roblox. It is designed to be easy to use, being strictly typed in [Luau](https://luau-lang.org/), and built to be efficient with network usage as well.
+## Install
 
-## Usage
+boo!! not done yet
+
+## Basic Usage
+
 For this example I will demonstrate creating a very simple status replication system
 
 On both the client and the server you are going to want to create a replicator with the same key, and specify the default states and their default values
@@ -16,11 +19,14 @@ local GameStateReplicator = Replicator.new("GameState", {
 	RoundStarted = false
 })
 ```
-> [!IMPORTANT]
-Whatever states you specify when creating the replicator will be the only states you can change, otherwise an error will be thrown
 
-> [!NOTE]
-If you are using strict Luau, you will want to add a type to the second argument to make everything optional, this way when you go to use the `changeStates` method, you won't have to worry about TypeErrors for missing states
+:::important
+Whatever states you specify when creating the replicator will be the only states you can change, otherwise an error will be thrown
+:::
+
+:::note
+If you are using strict Luau, you will want to add a type cast to the second argument to make everything optional, this way when you go to use the `changeStates` method, you won't have to worry about TypeErrors for missing states
+:::
 
 **Client:**
 ```lua
@@ -40,8 +46,9 @@ GameStateReplicator:changeStates({
 })
 ```
 
-> [!NOTE]
+:::note
 You do not need to specify all the states when changing them, only the ones you want to change
+:::
 
 Now that we have the server able to change the states, we need to listen for the changes on the client, to do this we will use the `StateChanged` signal as seen below
 
@@ -52,4 +59,4 @@ GameStateReplicator.StateChanged:Connect(function(state, value)
 end)
 ```
 
-Hooray! We now have a basic understanding of how to create a replicator! There is more to it than just this, but this is the basics of how to use it, more information can be found in the [documentation](https://ColRealPro.github.io/SimplyReplicate/)
+Hooraay! You have now successfully created a simple status replication system using SimplyReplicate! This is just the tip of the iceberg, there are many more features and use cases for SimplyReplicate, so be sure to check out [Replicating Data](replicatingdata.md) or the [API Reference](/api/Replicator) for more information.

@@ -1,0 +1,14 @@
+gitRepoUrl = "https://github.com/ColRealPro/SimplyReplicate"
+
+title = "SimplyReplicate"
+classOrder = [
+	"Replicator",
+	"Signal"
+]
+
+[home]
+enabled = true
+includeReadme = false
+
+[docusaurus]
+tagline = "A simple easy to use replication system for Roblox"
