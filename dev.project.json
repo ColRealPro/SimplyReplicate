@@ -6,7 +6,7 @@
     "ReplicatedStorage": {
       "Shared": {
         "$className": "Folder",
-        "Replicator": {
+        "SimplyReplicate": {
           "$path": "lib"
         }
       }

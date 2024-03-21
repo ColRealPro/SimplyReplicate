@@ -4,7 +4,7 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Replicator = require(ReplicatedStorage.Shared.Replicator)
+local Replicator = require(ReplicatedStorage.Shared.SimplyReplicate)
 
 local GameStateReplicator = Replicator.new("GameState", {
 	status = "none",

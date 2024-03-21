@@ -1,5 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Replicator = require(ReplicatedStorage.Shared.Replicator)
+local Replicator = require(ReplicatedStorage.Shared.SimplyReplicate)
 local GameStateReplicator = Replicator.new("GameState")
 
 print(GameStateReplicator)
