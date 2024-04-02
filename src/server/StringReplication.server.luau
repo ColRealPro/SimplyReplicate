@@ -17,6 +17,10 @@ GameStateReplicator:changeStates({
 	status = "SHARED!!!!",
 })
 
+GameStateReplicator.StateChanged:Connect(function(index, value)
+	print("State changed", index, value)
+end)
+
 for _, v in Players:GetPlayers() do
 	GameStateReplicator:changeStates({
 		status = "Hello world, this is overriden for " .. v.Name,
