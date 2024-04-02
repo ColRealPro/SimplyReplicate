@@ -353,6 +353,10 @@ function Replicator:_setState(state: string, value: any, players: { Player }?)
 	if not players then
 		self._localDataCopy[state] = value
 		players = Players:GetPlayers()
+
+		task.defer(function()
+			self.StateChanged:Fire(state, value)
+		end)
 	end
 
 	for _, player in players :: { Player } do
