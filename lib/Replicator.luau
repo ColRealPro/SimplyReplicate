@@ -42,7 +42,7 @@ type Replicator = typeof(setmetatable({} :: {
 	_isPlayer: boolean,
 	_context: "Server" | "Client" | string,
 	_deferringReplication: boolean,
-	_replicationNeeded: { Updates: { { Index: string, NewValue: any, Players: { Player }?, updateOrderTime: number } }, Syncs: { { Remove: { string }, Modify: { { Index: string, NewValue: any } }, Player: Player, SyncOrderTime: number } } },
+	_replicationNeeded: { Updates: { { Index: string, NewValue: any, Players: { Player | "PREVENT_GARBAGE_COLLECTION" }?, updateOrderTime: number } }, Syncs: { { Remove: { string }, Modify: { { Index: string, NewValue: any } }, Player: Player, SyncOrderTime: number } } },
 	-- _dataStructure: DataStructure,
 	_localDataCopy: DataStructure,
 	_userStateCopies: { [Player]: DataStructure },
@@ -293,6 +293,10 @@ function Replicator:_prepareReplication()
 
 			if players then
 				for _, player in players do
+					if typeof(player) == "string" then
+						continue
+					end
+
 					if not replicationData[player] then
 						replicationData[player] = table.clone(playerReplicationDataTemplate) :: PlayerReplicationData
 					end
@@ -343,23 +347,29 @@ function Replicator:_setState(state: string, value: any, players: { Player }?)
 	-- self._dataStructure[state] = value
 	-- self._replicationNeeded[state] = value
 
+	local _players = players :: { Player | "PREVENT_GARBAGE_COLLECTION" }?
+
+	if _players then
+		_players[999999] = "PREVENT_GARBAGE_COLLECTION"
+	end
+
 	table.insert(self._replicationNeeded.Updates, {
 		Index = state,
 		NewValue = value,
-		Players = players,
+		Players = _players,
 		updateOrderTime = os.clock()
 	})
 
-	if not players then
+	if not _players then
 		self._localDataCopy[state] = value
-		players = Players:GetPlayers()
+		_players = Players:GetPlayers()
 
 		task.defer(function()
 			self.StateChanged:Fire(state, value)
 		end)
 	end
 
-	for _, player in players :: { Player } do
+	for _, player in _players :: { Player } do
 		if not self._userStateCopies[player] then
 			self._userStateCopies[player] = self:_createDataStructure(self._originalDataStructure)
 		end
