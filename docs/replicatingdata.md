@@ -43,6 +43,17 @@ ExampleReplicator.StateChanged:Connect(function(state, value)
 end)
 ```
 
+However, this can get a bit messy if you have multiple states in the same replicator you want to listen to (which you usually do), so here you can use the `getStateChangedSignal` method to get a signal for a specific state.
+
+```lua
+local ExampleStateSignal = ExampleReplicator:getStateChangedSignal("ExampleState")
+ExampleStateSignal:Connect(function(value)
+	print(value)
+end)
+```
+
+This will only fire when the `ExampleState` state is changed, and will provide the new value as an argument.
+
 ## Changing States
 
 To change a state in the replicator, you can use the `changeStates` method. This method will take a table of states and their new values, and will replicate them to the client.
