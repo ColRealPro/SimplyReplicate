@@ -4,6 +4,7 @@ export type Replicator<T> = {
 	get: (self: Replicator<T>, index: string?) -> T,
 	getForPlayer: (self: Replicator<T>, player: Player, index: string?) -> T,
 	syncPlayer: (self: Replicator<T>, player: Player) -> (),
+	getStateChangedSignal: (self: Replicator<T>, state: string) -> Signal.Signal<any>,
 	Destroy: (self: Replicator<T>) -> (),
 
 	StateChanged: Signal.Signal<string, any>
