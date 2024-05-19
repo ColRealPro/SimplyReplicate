@@ -9,4 +9,8 @@ GameStateReplicator.StateChanged:Connect(function(state, value)
 	print(GameStateReplicator:get())
 end)
 
+GameStateReplicator:getStateChangedSignal("status"):Connect(function(value)
+	print("Status changed", value)
+end)
+
 print(GameStateReplicator:get())
