@@ -32,6 +32,7 @@ type ReplicatorImpl = {
 	_recieveUpdate: (self: Replicator, data: { syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? }?, updateData: { [string]: any } }) -> (),
 	get: (self: Replicator, index: string?) -> { [string]: any } | any,
 	getForPlayer: (self: Replicator, player: Player, index: string?) -> { [string]: any } | any,
+	getStateChangedSignal: (self: Replicator, state: string) -> Signal.Signal<any>,
 	Destroy: (self: Replicator) -> ()
 }
 
@@ -128,6 +129,12 @@ function Replicator.new<T>(identifier: string | Instance, data: T?)
 	self._userStateCopies = {}
 	
 	-- // Signals
+	--[=[
+		@prop StateChanged Signal<string, any>
+		@within Replicator
+
+		A signal that fires when a state has changed
+	]=]
 	self.StateChanged = Signal.new()
 	
 	if self._context == "Server" then
@@ -528,6 +535,24 @@ function Replicator:getForPlayer(player: Player, index: string?): { [string]: an
 	end
 
 	return data
+end
+
+--[=[
+	Returns a signal that fires when a specific state has changed
+
+	@param state string -- The state to listen for changes
+	@return Signal<any>
+]=]
+function Replicator:getStateChangedSignal(state: string): Signal.Signal<any>
+	local signal = Signal.new()
+
+	self.StateChanged:Connect(function(_state, value)
+		if _state == state then
+			signal:Fire(value)
+		end
+	end)
+
+	return signal
 end
 
 --[=[
