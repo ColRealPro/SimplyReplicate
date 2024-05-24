@@ -18,6 +18,12 @@ type dataType<T> = T
 type data = { [string]: dataType<any> }
 type DataStructure = typeof(setmetatable({} :: data, {}))
 
+type PlayerReplicationData = {
+	syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? },
+	updateData: { [string]: any },
+	internalData: { syncOrderTime: number? }
+}
+
 type ReplicatorImpl = {
 	__index: ReplicatorImpl,
 	__tostring: (self: Replicator) -> string,
@@ -25,6 +31,7 @@ type ReplicatorImpl = {
 	new: (identifier: string | Instance, data: data) -> Replicator,
 	changeStates: (self: Replicator, changedStates: data, players: ({ Player } | Player)?) -> (),
 	syncPlayer: (self: Replicator, player: Player) -> (),
+	_generatePlayerReplicationDataTemplate: (self: Replicator) -> PlayerReplicationData,
 	_prepareReplication: (self: Replicator) -> (),
 	_setState: (self: Replicator, state: string, value: any, players: { Player }?) -> (),
 	_createDataStructure: (self: Replicator, data: data) -> DataStructure,
@@ -43,7 +50,7 @@ type Replicator = typeof(setmetatable({} :: {
 	_isPlayer: boolean,
 	_context: "Server" | "Client" | string,
 	_deferringReplication: boolean,
-	_replicationNeeded: { Updates: { { Index: string, NewValue: any, Players: { Player | "PREVENT_GARBAGE_COLLECTION" }?, updateOrderTime: number } }, Syncs: { { Remove: { string }, Modify: { { Index: string, NewValue: any } }, Player: Player, SyncOrderTime: number } } },
+	_replicationNeeded: { Updates: { { Index: string, NewValue: any, Players: { Player }?, updateOrderTime: number } }, Syncs: { { Remove: { string }, Modify: { { Index: string, NewValue: any } }, Player: Player, SyncOrderTime: number } } },
 	-- _dataStructure: DataStructure,
 	_localDataCopy: DataStructure,
 	_userStateCopies: { [Player]: DataStructure },
@@ -238,6 +245,14 @@ function Replicator:syncPlayer(player: Player)
 	self:_prepareReplication()
 end
 
+function Replicator:_generatePlayerReplicationDataTemplate(): PlayerReplicationData
+	return {
+		syncData = {},
+		updateData = {},
+		internalData = {}
+	}
+end
+
 function Replicator:_prepareReplication()
 	print("Preparing replication")
 	self._deferringReplication = true
@@ -257,18 +272,6 @@ function Replicator:_prepareReplication()
 			}
 		}
 
-		type PlayerReplicationData = {
-			syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? },
-			updateData: { [string]: any },
-			internalData: { syncOrderTime: number? }
-		}
-
-		local playerReplicationDataTemplate = {
-			syncData = {},
-			updateData = {},
-			internalData = {}
-		}
-
 		-- Evaluate syncs first to make sure that we have enough data to keep the replication in order
 		-- and have the client in sync with the server
 		for _, v in replicationNeeded.Syncs do
@@ -278,7 +281,7 @@ function Replicator:_prepareReplication()
 			local syncOrderTime = v.SyncOrderTime
 			
 			if not replicationData[player] then
-				replicationData[player] = table.clone(playerReplicationDataTemplate) :: PlayerReplicationData
+				replicationData[player] = self:_generatePlayerReplicationDataTemplate()
 			end
 
 			local previousSyncOrderTime = replicationData[player].internalData.syncOrderTime
@@ -300,12 +303,8 @@ function Replicator:_prepareReplication()
 
 			if players then
 				for _, player in players do
-					if typeof(player) == "string" then
-						continue
-					end
-
 					if not replicationData[player] then
-						replicationData[player] = table.clone(playerReplicationDataTemplate) :: PlayerReplicationData
+						replicationData[player] = self:_generatePlayerReplicationDataTemplate()
 					end
 
 					local syncOrderTime = replicationData[player].internalData.syncOrderTime
@@ -354,29 +353,23 @@ function Replicator:_setState(state: string, value: any, players: { Player }?)
 	-- self._dataStructure[state] = value
 	-- self._replicationNeeded[state] = value
 
-	local _players = players :: { Player | "PREVENT_GARBAGE_COLLECTION" }?
-
-	if _players then
-		_players[999999] = "PREVENT_GARBAGE_COLLECTION"
-	end
-
 	table.insert(self._replicationNeeded.Updates, {
 		Index = state,
 		NewValue = value,
-		Players = _players,
+		Players = players,
 		updateOrderTime = os.clock()
 	})
 
-	if not _players then
+	if not players then
 		self._localDataCopy[state] = value
-		_players = Players:GetPlayers()
+		players = Players:GetPlayers()
 
 		task.defer(function()
 			self.StateChanged:Fire(state, value)
 		end)
 	end
 
-	for _, player in _players :: { Player } do
+	for _, player in players :: { Player } do
 		if not self._userStateCopies[player] then
 			self._userStateCopies[player] = self:_createDataStructure(self._originalDataStructure)
 		end
