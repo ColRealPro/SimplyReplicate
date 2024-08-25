@@ -1,1 +1,7 @@
 sourcemap.json
+build/
+.vscode/
+# testing if wally package worked
+Packages/ 
+wally.toml
+wally.lock
