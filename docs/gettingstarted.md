@@ -8,7 +8,7 @@ Installing SimplyReplicate is very simple. You can either download the module fr
 - Get the rbxm file from the [Releases Page](https://github.com/ColRealPro/SimplyReplicate/releases) and insert it into your game
 
 **Wally:**
-- Add SimplyReplicate to your `wally.toml` dependency list (e.g. `SimplyReplicate = "colrealpro/simplyreplicate@^0.1.7"`)
+- Add SimplyReplicate to your `wally.toml` dependency list (e.g. `SimplyReplicate = "colrealpro/simplyreplicate@^0.1.8"`)
 - Run `wally install` in your terminal
 
 :::note Wally
