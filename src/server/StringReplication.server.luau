@@ -6,10 +6,13 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Replicator = require(ReplicatedStorage.Shared.SimplyReplicate)
 
-local GameStateReplicator = Replicator.new("GameState", {
-	status = "none",
-	status2 = "none",
-} :: any)
+local GameStateReplicator = Replicator.new(
+	"GameState",
+	{
+		status = "none",
+		status2 = "none",
+	} :: any
+)
 
 task.wait(5)
 
@@ -36,7 +39,7 @@ print("Server data:", GameStateReplicator:get())
 
 task.wait(1)
 
-for _,v in Players:GetPlayers() do
+for _, v in Players:GetPlayers() do
 	GameStateReplicator:syncPlayer(v)
 end
 

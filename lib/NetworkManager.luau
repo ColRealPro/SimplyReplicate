@@ -19,8 +19,9 @@ local print = console.log
 type NetworkManagerImpl = {
 	__index: NetworkManagerImpl,
 	_initialized: boolean,
+	_useBuffer: boolean,
 
-	new: (identifier: string | Instance) -> NetworkManager,
+	new: (identifier: string | Instance, useBuffer: boolean?) -> NetworkManager,
 	_init: () -> (),
 	listen: (self: NetworkManager, tag: string, callback: (...any?) -> nil) -> (),
 	listenToFetch: (self: NetworkManager, tag: string, callback: (player: Player, ...any?) -> any?) -> (),
@@ -37,6 +38,7 @@ type NetworkManagerImpl = {
 export type NetworkManager = typeof(setmetatable(
 	{} :: {
 		_identifier: string | Instance,
+		_useBuffer: boolean?,
 		_maid: typeof(Maid),
 		_fetchListeners: { [string]: (...any) -> any? },
 		_context: string,
@@ -87,19 +89,23 @@ function NetworkManager._init()
 
 		local rawData = manager:_handleFetch(tag, data)
 
-		local compressedData = msgpack.utf8Encode(msgpack.encode(rawData))
+		local finalizedData = {
+			data = manager._useBuffer and msgpack.utf8Encode(msgpack.encode(rawData)) or rawData,
+			useBuffer = manager._useBuffer,
+		}
 
-		return compressedData
+		return finalizedData
 	end
 
 	self._initialized = true
 	print("Initialized network manager on server")
 end
 
-function NetworkManager.new(identifier: string | Instance): NetworkManager
+function NetworkManager.new(identifier: string | Instance, useBuffer: boolean?): NetworkManager
 	local self = setmetatable({}, NetworkManager)
 
 	self._identifier = identifier
+	self._useBuffer = useBuffer or false
 	self._maid = Maid.new()
 	self._fetchListeners = {}
 	self._context = RunService:IsServer() and "OnServerEvent" or "OnClientEvent"
@@ -132,7 +138,7 @@ function NetworkManager:listen(tag: string, callback: (...any?) -> nil)
 
 		data = table.remove(args, 1) :: string
 
-		local decodedData = msgpack.decode(msgpack.utf8Decode(data))
+		local decodedData = self._useBuffer and msgpack.decode(msgpack.utf8Decode(data)) or data
 
 		print(`Handling listener for {tag}:`, args)
 
@@ -164,7 +170,11 @@ function NetworkManager:fetch(tag: string, data: any?)
 	end
 
 	local fetchedData = self.Fetch:InvokeServer(self._identifier, tag, data)
-	local decompressedData = msgpack.decode(msgpack.utf8Decode(fetchedData))
+
+	self._useBuffer = fetchedData.useBuffer
+
+	local decompressedData = self._useBuffer and msgpack.decode(msgpack.utf8Decode(fetchedData.data))
+		or fetchedData.data
 
 	return decompressedData
 end
@@ -172,7 +182,7 @@ end
 function NetworkManager:send(tag: string, data: any, players: { Player }?)
 	local server = RunService:IsServer()
 
-	local compressedData = msgpack.utf8Encode(msgpack.encode(data))
+	local compressedData = self._useBuffer and msgpack.utf8Encode(msgpack.encode(data)) or data
 
 	if server and players and #players > 0 then
 		for _, sendTo: Player in players do

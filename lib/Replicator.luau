@@ -144,12 +144,12 @@ end
 	if you let Luau infer the type, when you go to change the state, it will want you to include every state as it wont have an option to be nil.
 	:::
 ]=]
-function Replicator.new<T>(identifier: string | Instance, data: T?)
+function Replicator.new<T>(identifier: string | Instance, data: T?, useBuffer: boolean?)
 	local self = setmetatable({}, Replicator) :: Replicator
 
 	self.identifier = identifier
 	self._maid = Maid.new()
-	self._networkManager = NetworkManager.new(identifier)
+	self._networkManager = NetworkManager.new(identifier, useBuffer)
 	self._isPlayer = typeof(identifier) == "Instance" and identifier:IsA("Player")
 	self._context = RunService:IsServer() and "Server" or "Client"
 	self._userStateCopies = {}
