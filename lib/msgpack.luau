@@ -24,7 +24,7 @@ local tableCreate = table.create
 -- MsgPack numbers are big-endian, buffer methods are little-endian
 -- Will need to reverse 16 and 32 bit ints, floats and doubles
 local function reverse(b: buffer, offset: number, count: number): ()
-	for i = 1, count // 2 do
+	for i = 1, math.floor(count / 2) do
 		local byte = readu8(b, offset + i - 1)
 		bufferCopy(b, offset + i - 1, b, offset + count - i, 1)
 		writeu8(b, offset + count - i, byte)
