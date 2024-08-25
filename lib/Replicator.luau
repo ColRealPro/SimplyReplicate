@@ -9,7 +9,6 @@ local NetworkManager = require(script.Parent.NetworkManager)
 local console = require(script.Parent.console)
 local Maid = require(script.Parent.Maid)
 local Signal = require(script.Parent.Signal)
-local msgpack = require(script.Parent.msgpack)
 
 -- console.WriteEnv()
 local print = console.log
@@ -425,7 +424,7 @@ end
 function Replicator:_fetchFromServer()
 	local data = self._networkManager:fetch("FETCH_REPLICATOR", {
 		identifier = self.identifier,
-	}) :: any
+	}) :: { [string]: any }
 
 	self._localDataCopy = self:_createDataStructure(data)
 
