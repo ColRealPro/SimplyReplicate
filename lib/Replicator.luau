@@ -9,6 +9,7 @@ local NetworkManager = require(script.Parent.NetworkManager)
 local console = require(script.Parent.console)
 local Maid = require(script.Parent.Maid)
 local Signal = require(script.Parent.Signal)
+local msgpack = require(script.Parent.msgpack)
 
 -- console.WriteEnv()
 local print = console.log
@@ -21,13 +22,13 @@ type DataStructure = typeof(setmetatable({} :: data, {}))
 type PlayerReplicationData = {
 	syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? },
 	updateData: { [string]: any },
-	internalData: { syncOrderTime: number? }
+	internalData: { syncOrderTime: number? },
 }
 
 type ReplicatorImpl = {
 	__index: ReplicatorImpl,
 	__tostring: (self: Replicator) -> string,
-	
+
 	new: (identifier: string | Instance, data: data) -> Replicator,
 	changeStates: (self: Replicator, changedStates: data, players: ({ Player } | Player)?) -> (),
 	syncPlayer: (self: Replicator, player: Player) -> (),
@@ -36,27 +37,46 @@ type ReplicatorImpl = {
 	_setState: (self: Replicator, state: string, value: any, players: { Player }?) -> (),
 	_createDataStructure: (self: Replicator, data: data) -> DataStructure,
 	_fetchFromServer: (self: Replicator) -> (),
-	_recieveUpdate: (self: Replicator, data: { syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? }?, updateData: { [string]: any } }) -> (),
+	_recieveUpdate: (
+		self: Replicator,
+		data: {
+			syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? }?,
+			updateData: { [string]: any },
+		}
+	) -> (),
 	get: (self: Replicator, index: string?) -> { [string]: any } | any,
 	getForPlayer: (self: Replicator, player: Player, index: string?) -> { [string]: any } | any,
 	getStateChangedSignal: (self: Replicator, state: string) -> Signal.Signal<any>,
-	Destroy: (self: Replicator) -> ()
+	Destroy: (self: Replicator) -> (),
 }
 
-type Replicator = typeof(setmetatable({} :: {
-	identifier: string | Instance,
-	_maid: typeof(Maid),
-	_networkManager: NetworkManager.NetworkManager,
-	_isPlayer: boolean,
-	_context: "Server" | "Client" | string,
-	_deferringReplication: boolean,
-	_replicationNeeded: { Updates: { { Index: string, NewValue: any, Players: { Player }?, updateOrderTime: number } }, Syncs: { { Remove: { string }, Modify: { { Index: string, NewValue: any } }, Player: Player, SyncOrderTime: number } } },
-	-- _dataStructure: DataStructure,
-	_localDataCopy: DataStructure,
-	_userStateCopies: { [Player]: DataStructure },
-	_originalDataStructure: { [string]: any },
-	StateChanged: Signal.Signal<string, any>
-}, {} :: ReplicatorImpl))
+type Replicator = typeof(setmetatable(
+	{} :: {
+		identifier: string | Instance,
+		_maid: typeof(Maid),
+		_networkManager: NetworkManager.NetworkManager,
+		_isPlayer: boolean,
+		_context: "Server" | "Client" | string,
+		_deferringReplication: boolean,
+		_replicationNeeded: {
+			Updates: { { Index: string, NewValue: any, Players: { Player }?, updateOrderTime: number } },
+			Syncs: {
+				{
+					Remove: { string },
+					Modify: { { Index: string, NewValue: any } },
+					Player: Player,
+					SyncOrderTime: number,
+				}
+			},
+		},
+		-- _dataStructure: DataStructure,
+		_localDataCopy: DataStructure,
+		_userStateCopies: { [Player]: DataStructure },
+		_originalDataStructure: { [string]: any },
+		StateChanged: Signal.Signal<string, any>,
+	},
+	{} :: ReplicatorImpl
+))
 
 --[=[
 	@class Replicator
@@ -134,7 +154,7 @@ function Replicator.new<T>(identifier: string | Instance, data: T?)
 	self._isPlayer = typeof(identifier) == "Instance" and identifier:IsA("Player")
 	self._context = RunService:IsServer() and "Server" or "Client"
 	self._userStateCopies = {}
-	
+
 	-- // Signals
 	--[=[
 		@prop StateChanged Signal<string, any>
@@ -143,7 +163,7 @@ function Replicator.new<T>(identifier: string | Instance, data: T?)
 		A signal that fires when a state has changed
 	]=]
 	self.StateChanged = Signal.new()
-	
+
 	if self._context == "Server" then
 		if not data then
 			error("Data must be provided when creating a replicator on the server.", 2)
@@ -155,7 +175,7 @@ function Replicator.new<T>(identifier: string | Instance, data: T?)
 
 		self._replicationNeeded = {
 			Updates = {},
-			Syncs = {}
+			Syncs = {},
 		}
 		self._deferringReplication = false
 		self._originalDataStructure = table.freeze(table.clone(data))
@@ -174,7 +194,10 @@ function Replicator.new<T>(identifier: string | Instance, data: T?)
 		self._networkManager:listen("UPDATE_REPLICATOR", function(data)
 			if data.identifier == self.identifier then
 				print("Recieved update from server")
-				self:_recieveUpdate(data :: { syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? }?, updateData: { [string]: any } })
+				self:_recieveUpdate(data :: {
+					syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? }?,
+					updateData: { [string]: any },
+				})
 			end
 		end)
 	end
@@ -229,7 +252,7 @@ function Replicator:syncPlayer(player: Player)
 			--        meaning that replicating the value as part of a sync is now useless
 			table.insert(modify, {
 				Index = state,
-				NewValue = self._localDataCopy[state]
+				NewValue = self._localDataCopy[state],
 			})
 		end
 	end
@@ -239,7 +262,7 @@ function Replicator:syncPlayer(player: Player)
 		Modify = modify,
 		Player = player,
 
-		SyncOrderTime = os.clock()
+		SyncOrderTime = os.clock(),
 	})
 
 	self:_prepareReplication()
@@ -249,7 +272,7 @@ function Replicator:_generatePlayerReplicationDataTemplate(): PlayerReplicationD
 	return {
 		syncData = {},
 		updateData = {},
-		internalData = {}
+		internalData = {},
 	}
 end
 
@@ -263,13 +286,13 @@ function Replicator:_prepareReplication()
 		local replicationNeeded = self._replicationNeeded
 		self._replicationNeeded = {
 			Updates = {},
-			Syncs = {}
+			Syncs = {},
 		}
 
 		local replicationData = {
 			["$all"] = {
 				updateData = {},
-			}
+			},
 		}
 
 		-- Evaluate syncs first to make sure that we have enough data to keep the replication in order
@@ -279,7 +302,7 @@ function Replicator:_prepareReplication()
 			local remove = v.Remove
 			local modify = v.Modify
 			local syncOrderTime = v.SyncOrderTime
-			
+
 			if not replicationData[player] then
 				replicationData[player] = self:_generatePlayerReplicationDataTemplate()
 			end
@@ -309,10 +332,12 @@ function Replicator:_prepareReplication()
 
 					local syncOrderTime = replicationData[player].internalData.syncOrderTime
 					if syncOrderTime and v.updateOrderTime < syncOrderTime then
-						print(`Dropping update for state {v.Index} for player {player.Name} as a sync has already been evaluated after this update`)
+						print(
+							`Dropping update for state {v.Index} for player {player.Name} as a sync has already been evaluated after this update`
+						)
 						continue
 					end
-	
+
 					replicationData[player].updateData[index] = newValue
 				end
 			else
@@ -344,7 +369,7 @@ function Replicator:_prepareReplication()
 				identifier = self.identifier,
 				syncData = data.syncData,
 				updateData = data.updateData,
-			}, {player :: Player})
+			}, { player :: Player })
 		end
 	end)
 end
@@ -357,7 +382,7 @@ function Replicator:_setState(state: string, value: any, players: { Player }?)
 		Index = state,
 		NewValue = value,
 		Players = players,
-		updateOrderTime = os.clock()
+		updateOrderTime = os.clock(),
 	})
 
 	if not players then
@@ -376,7 +401,7 @@ function Replicator:_setState(state: string, value: any, players: { Player }?)
 
 		self._userStateCopies[player][state] = value
 	end
-	
+
 	if not self._deferringReplication then
 		self:_prepareReplication()
 	end
@@ -384,16 +409,14 @@ function Replicator:_setState(state: string, value: any, players: { Player }?)
 	print(`Successfully changed state {state} to {value}`)
 end
 
-function Replicator:_createDataStructure(data: { [string]: any }) :  DataStructure
+function Replicator:_createDataStructure(data: { [string]: any }): DataStructure
 	local dataStructure = setmetatable(table.clone(data), {
 		__index = function(self, key)
-			error(string.format("Invalid state %s, does not exist in the data structure.",
-				tostring(key)), 4)
+			error(string.format("Invalid state %s, does not exist in the data structure.", tostring(key)), 4)
 		end,
 		__newindex = function(self, key, value)
-			error(string.format("Invalid state %s, does not exist in the data structure.",
-				tostring(key)), 4)
-		end
+			error(string.format("Invalid state %s, does not exist in the data structure.", tostring(key)), 4)
+		end,
 	})
 
 	return dataStructure
@@ -402,17 +425,20 @@ end
 function Replicator:_fetchFromServer()
 	local data = self._networkManager:fetch("FETCH_REPLICATOR", {
 		identifier = self.identifier,
-	}) :: { [string]: any }
+	}) :: any
 
 	self._localDataCopy = self:_createDataStructure(data)
 
 	print("Successfully fetched initial data from server")
 end
 
-function Replicator:_recieveUpdate(data: { syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? }?, updateData: { [string]: any } })
+function Replicator:_recieveUpdate(data: {
+	syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? }?,
+	updateData: { [string]: any },
+})
 	-- for state, value in data do
 	-- 	self._localDataCopy[state] = value
-		
+
 	-- 	task.defer(function()
 	-- 		self.StateChanged:Fire(state, value)
 	-- 	end)
@@ -452,7 +478,7 @@ function Replicator:_recieveUpdate(data: { syncData: { Remove: { string }?, Modi
 				end
 
 				self._localDataCopy[index] = newValue
-				
+
 				task.defer(function()
 					if self._localDataCopy[index] ~= newValue then
 						return
@@ -563,7 +589,7 @@ function Replicator:Destroy()
 		end,
 		__newindex = function()
 			error("This replicator has been destroyed", 2)
-		end
+		end,
 	})
 end
 

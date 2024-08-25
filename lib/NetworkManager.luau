@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 local Instanciate = require(script.Parent.Instanciate)
 local Maid = require(script.Parent.Maid)
 local console = require(script.Parent.console)
+local msgpack = require(script.Parent.msgpack)
 
 local NetworkManager: NetworkManagerImpl = {} :: NetworkManagerImpl
 NetworkManager.__index = NetworkManager
@@ -33,13 +34,16 @@ type NetworkManagerImpl = {
 	Fetch: RemoteFunction,
 }
 
-export type NetworkManager = typeof(setmetatable({} :: {
-	_identifier: string | Instance,
-	_maid: typeof(Maid),
-	_fetchListeners: { [string]: (...any) -> any? },
-	_context: string,
-	_initialized: boolean,
-}, {} :: NetworkManagerImpl))
+export type NetworkManager = typeof(setmetatable(
+	{} :: {
+		_identifier: string | Instance,
+		_maid: typeof(Maid),
+		_fetchListeners: { [string]: (...any) -> any? },
+		_context: string,
+		_initialized: boolean,
+	},
+	{} :: NetworkManagerImpl
+))
 
 function NetworkManager._init()
 	local self = NetworkManager
@@ -81,7 +85,11 @@ function NetworkManager._init()
 			error("No network manager found for identifier: " .. identifier, 1)
 		end
 
-		return manager:_handleFetch(tag, data)
+		local rawData = manager:_handleFetch(tag, data)
+
+		local compressedData = msgpack.utf8Encode(msgpack.encode(rawData))
+
+		return compressedData
 	end
 
 	self._initialized = true
@@ -96,7 +104,7 @@ function NetworkManager.new(identifier: string | Instance): NetworkManager
 	self._fetchListeners = {}
 	self._context = RunService:IsServer() and "OnServerEvent" or "OnClientEvent"
 	self._initialized = self._initialized
-	
+
 	self._init()
 
 	ActiveNetworkManagers[identifier] = self
@@ -114,6 +122,7 @@ function NetworkManager:listen(tag: string, callback: (...any?) -> nil)
 		local args = { ... }
 		local player
 		local tag
+		local data
 
 		if self._context == "OnServerEvent" then
 			player = table.remove(args, 1)
@@ -121,12 +130,16 @@ function NetworkManager:listen(tag: string, callback: (...any?) -> nil)
 
 		tag = table.remove(args, 1)
 
+		data = table.remove(args, 1) :: string
+
+		local decodedData = msgpack.decode(msgpack.utf8Decode(data))
+
 		print(`Handling listener for {tag}:`, args)
 
 		if self._context == "OnServerEvent" then
-			callback(player, unpack(args))
+			callback(player, decodedData)
 		else
-			callback(unpack(args))
+			callback(decodedData)
 		end
 	end))
 end
@@ -140,7 +153,7 @@ function NetworkManager:_handleFetch(tag: string, data: any?)
 
 	if not listener then
 		error("No listener found for fetch tag: " .. tag, 1)
-	end	
+	end
 
 	return listener(data)
 end
@@ -150,22 +163,27 @@ function NetworkManager:fetch(tag: string, data: any?)
 		error("Cannot fetch on server", 2)
 	end
 
-	return self.Fetch:InvokeServer(self._identifier, tag, data)
+	local fetchedData = self.Fetch:InvokeServer(self._identifier, tag, data)
+	local decompressedData = msgpack.decode(msgpack.utf8Decode(fetchedData))
+
+	return decompressedData
 end
 
 function NetworkManager:send(tag: string, data: any, players: { Player }?)
 	local server = RunService:IsServer()
 
+	local compressedData = msgpack.utf8Encode(msgpack.encode(data))
+
 	if server and players and #players > 0 then
 		for _, sendTo: Player in players do
 			print("Sending to player", sendTo)
-			self.Remote:FireClient(sendTo, tag, data)
+			self.Remote:FireClient(sendTo, tag, compressedData)
 		end
 	elseif server then
 		print("Sending to all clients")
-		self.Remote:FireAllClients(tag, data)
+		self.Remote:FireAllClients(tag, compressedData)
 	else
-		self.Remote:FireServer(tag, data)
+		self.Remote:FireServer(tag, compressedData)
 	end
 end
 
