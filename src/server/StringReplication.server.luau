@@ -9,26 +9,32 @@ local Replicator = require(ReplicatedStorage.Shared.SimplyReplicate)
 local GameStateReplicator = Replicator.new(
 	"GameState",
 	{
-		status = "none",
-		status2 = "none",
-	} :: any
+		status = "none" :: string?,
+		status2 = "none" :: string?,
+	}
 )
 
 task.wait(5)
 
-GameStateReplicator:changeStates({
-	status = "SHARED!!!!",
-})
+-- GameStateReplicator:changeStates({
+-- 	status = "SHARED!!!!",
+-- })
+
+GameStateReplicator:getMutable().status = "SHARED!!!!"
 
 GameStateReplicator.StateChanged:Connect(function(index, value)
 	print("State changed", index, value)
 end)
 
 for _, v in Players:GetPlayers() do
-	GameStateReplicator:changeStates({
-		status = "Hello world, this is overriden for " .. v.Name,
-		status2 = v.Name,
-	}, v)
+	-- GameStateReplicator:changeStates({
+	-- 	status = "Hello world, this is overriden for " .. v.Name,
+	-- 	status2 = v.Name,
+	-- }, v)
+
+	local mutable = GameStateReplicator:getMutable(v)
+	mutable.status = "Hello world, this is overriden for " .. v.Name
+	mutable.status2 = v.Name
 end
 
 for _, v in Players:GetPlayers() do
