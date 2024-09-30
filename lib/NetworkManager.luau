@@ -140,7 +140,7 @@ function NetworkManager:listen(tag: string, callback: (...any?) -> nil)
 
 		local decodedData = self._useBuffer and msgpack.decode(msgpack.utf8Decode(data)) or data
 
-		print(`Handling listener for {tag}:`, args)
+		print(`Handling listener for {tag}:`, decodedData)
 
 		if self._context == "OnServerEvent" then
 			callback(player, decodedData)
