@@ -44,6 +44,7 @@ type ReplicatorImpl = {
 		}
 	) -> (),
 	get: (self: Replicator, index: string?) -> { [string]: any } | any,
+	getMutable: (self: Replicator, players: ({ Player } | Player)?) -> { [string]: any },
 	getForPlayer: (self: Replicator, player: Player, index: string?) -> { [string]: any } | any,
 	getStateChangedSignal: (self: Replicator, state: string) -> Signal.Signal<any>,
 	Destroy: (self: Replicator) -> (),
@@ -246,7 +247,7 @@ function Replicator:syncPlayer(player: Player)
 		if not rawget(self._localDataCopy :: any, state) then
 			table.insert(remove, state)
 		elseif self._localDataCopy[state] ~= value then
-			-- FIXME: If a value is modified in the same frame before a sync, it will be put in the sync table even though it has not replication
+			-- FIXME: If a value is modified in the same frame before a sync, it will be put in the sync table even though it has not replicated
 			--        this isn't a huge issue but it leads to wasted data being sent to the client as the original value will be dropped during replication
 			--        meaning that replicating the value as part of a sync is now useless
 			table.insert(modify, {
@@ -522,6 +523,32 @@ function Replicator:get(index: string?): { [string]: any } | any
 	end
 
 	return data
+end
+
+function Replicator:getMutable(players: ({ Player } | Player)?): { [string]: any }
+	local dataStructure = self._localDataCopy
+	local data = {}
+
+	-- Manually clone the table to remove the metatable
+	for state, value in next, dataStructure do
+		data[state] = value
+	end
+
+	local mutable = {}
+
+	setmetatable(mutable, {
+		__index = function(_, key)
+			return data[key]
+		end,
+		__newindex = function(_, key, value)
+			self:changeStates({
+				[key] = value,
+			}, players)
+		end,
+	})
+
+	-- I have no idea how to properly type this :(
+	return (mutable :: any) :: { [string]: any }
 end
 
 --[=[
