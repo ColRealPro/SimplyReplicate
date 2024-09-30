@@ -44,6 +44,7 @@ type ReplicatorImpl = {
 		}
 	) -> (),
 	get: (self: Replicator, index: string?) -> { [string]: any } | any,
+	getMutable: (self: Replicator, players: ({ Player } | Player)?) -> { [string]: any },
 	getForPlayer: (self: Replicator, player: Player, index: string?) -> { [string]: any } | any,
 	getStateChangedSignal: (self: Replicator, state: string) -> Signal.Signal<any>,
 	Destroy: (self: Replicator) -> (),
@@ -246,7 +247,7 @@ function Replicator:syncPlayer(player: Player)
 		if not rawget(self._localDataCopy :: any, state) then
 			table.insert(remove, state)
 		elseif self._localDataCopy[state] ~= value then
-			-- FIXME: If a value is modified in the same frame before a sync, it will be put in the sync table even though it has not replication
+			-- FIXME: If a value is modified in the same frame before a sync, it will be put in the sync table even though it has not replicated
 			--        this isn't a huge issue but it leads to wasted data being sent to the client as the original value will be dropped during replication
 			--        meaning that replicating the value as part of a sync is now useless
 			table.insert(modify, {
@@ -522,6 +523,95 @@ function Replicator:get(index: string?): { [string]: any } | any
 	end
 
 	return data
+end
+
+--[=[
+	Returns a mutable version of the current state stored in the replicator, when a state is changed in the
+	mutable data, it will automatically replicate the change to the client
+
+	:::caution
+	Do not use `table.clear` on a table in the mutable data, it will not replicate the change to the clients
+	:::
+
+	@param players { Player } | Player? -- If provided, the mutable data will only be able to change states for the given players
+	@return { [string]: any } -- A mutable version of the current state stored in the replicator
+]=]
+function Replicator:getMutable(players: ({ Player } | Player)?): { [string]: any }
+	local dataStructure = self._localDataCopy
+
+	-- Manually clone the table to remove the metatable
+	local function clone(tbl, parents: { any }?)
+		local data = {}
+
+		for state, value in next, tbl do
+			if type(value) == "table" then
+				print(state)
+				local newParents = parents or {}
+
+				table.insert(newParents, { tbl, state })
+
+				local cloned = clone(value, newParents)
+				local mutable = {}
+
+				setmetatable(mutable, {
+					__index = function(_, key)
+						return cloned[key]
+					end,
+					__newindex = function(_, key, newValue)
+						print("Setting", key, newValue)
+
+						value[key] = newValue
+
+						for _, parent in next, newParents do
+							local parentTbl = parent[1]
+							local parentState = parent[2]
+
+							if parentTbl[parentState] == cloned then
+								parentTbl[parentState] = cloned
+							end
+						end
+
+						local topLevelState = parents and parents[1][2] or state
+						local topLevelValue = (parents and parents[2]) and parents[2][1] or value
+
+						print("Setting state", topLevelState, topLevelValue, value)
+
+						self:changeStates({
+							[topLevelState] = topLevelValue,
+						}, players)
+					end,
+				})
+
+				data[state] = mutable
+
+				continue
+			end
+
+			data[state] = value
+		end
+
+		return data
+	end
+
+	local data = clone(dataStructure :: any)
+	local mutable = {}
+
+	setmetatable(mutable, {
+		__index = function(_, key)
+			return data[key]
+		end,
+		__newindex = function(_, key, value)
+			self:changeStates({
+				[key] = value,
+			}, players)
+		end,
+		__tostring = function()
+			return "MutableReplicatorData(" .. tostring(self.identifier) .. ")"
+		end,
+	})
+
+	-- I have no idea how to properly type this :(
+	return (mutable :: any) :: { [string]: any }
 end
 
 --[=[

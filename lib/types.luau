@@ -2,6 +2,7 @@ local Signal = require(script.Parent.Signal)
 export type Replicator<T> = {
 	changeStates: (self: Replicator<T>, changedStates: T, players: ({ Player } | Player)?) -> (),
 	get: (self: Replicator<T>, index: string?) -> T,
+	getMutable: (self: Replicator<T>, players: ({ Player } | Player)?) -> T,
 	getForPlayer: (self: Replicator<T>, player: Player, index: string?) -> T,
 	syncPlayer: (self: Replicator<T>, player: Player) -> (),
 	getStateChangedSignal: (self: Replicator<T>, state: string) -> Signal.Signal<any>,
