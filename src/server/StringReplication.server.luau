@@ -11,6 +11,13 @@ local GameStateReplicator = Replicator.new(
 	{
 		status = "none" :: string?,
 		status2 = "none" :: string?,
+		testTable = {
+			nestedTable = {
+				nestedTable2 = {
+					Hello = "World",
+				}
+			}
+		},
 	}
 )
 
@@ -21,6 +28,7 @@ task.wait(5)
 -- })
 
 GameStateReplicator:getMutable().status = "SHARED!!!!"
+GameStateReplicator:getMutable().testTable.nestedTable.nestedTable2.Hello = "World2"
 
 GameStateReplicator.StateChanged:Connect(function(index, value)
 	print("State changed", index, value)

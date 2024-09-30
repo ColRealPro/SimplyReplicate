@@ -525,15 +525,75 @@ function Replicator:get(index: string?): { [string]: any } | any
 	return data
 end
 
+--[=[
+	Returns a mutable version of the current state stored in the replicator, when a state is changed in the
+	mutable data, it will automatically replicate the change to the client
+
+	:::caution
+	Do not use `table.clear` on a table in the mutable data, it will not replicate the change to the clients
+	:::
+
+	@param players { Player } | Player? -- If provided, the mutable data will only be able to change states for the given players
+	@return { [string]: any } -- A mutable version of the current state stored in the replicator
+]=]
 function Replicator:getMutable(players: ({ Player } | Player)?): { [string]: any }
 	local dataStructure = self._localDataCopy
-	local data = {}
 
 	-- Manually clone the table to remove the metatable
-	for state, value in next, dataStructure do
-		data[state] = value
+	local function clone(tbl, parents: { any }?)
+		local data = {}
+
+		for state, value in next, tbl do
+			if type(value) == "table" then
+				print(state)
+				local newParents = parents or {}
+
+				table.insert(newParents, { tbl, state })
+
+				local cloned = clone(value, newParents)
+				local mutable = {}
+
+				setmetatable(mutable, {
+					__index = function(_, key)
+						return cloned[key]
+					end,
+					__newindex = function(_, key, newValue)
+						print("Setting", key, newValue)
+
+						value[key] = newValue
+
+						for _, parent in next, newParents do
+							local parentTbl = parent[1]
+							local parentState = parent[2]
+
+							if parentTbl[parentState] == cloned then
+								parentTbl[parentState] = cloned
+							end
+						end
+
+						local topLevelState = parents and parents[1][2] or state
+						local topLevelValue = (parents and parents[2]) and parents[2][1] or value
+
+						print("Setting state", topLevelState, topLevelValue, value)
+
+						self:changeStates({
+							[topLevelState] = topLevelValue,
+						}, players)
+					end,
+				})
+
+				data[state] = mutable
+
+				continue
+			end
+
+			data[state] = value
+		end
+
+		return data
 	end
 
+	local data = clone(dataStructure :: any)
 	local mutable = {}
 
 	setmetatable(mutable, {
@@ -544,6 +604,9 @@ function Replicator:getMutable(players: ({ Player } | Player)?): { [string]: any
 			self:changeStates({
 				[key] = value,
 			}, players)
+		end,
+		__tostring = function()
+			return "MutableReplicatorData(" .. tostring(self.identifier) .. ")"
 		end,
 	})
 
