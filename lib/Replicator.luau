@@ -31,6 +31,7 @@ type ReplicatorImpl = {
 	new: (identifier: string | Instance, data: data) -> Replicator,
 	changeStates: (self: Replicator, changedStates: data, players: ({ Player } | Player)?) -> (),
 	syncPlayer: (self: Replicator, player: Player) -> (),
+	set: (self: Replicator, state: string, value: any, players: { Player }?) -> (),
 	_generatePlayerReplicationDataTemplate: (self: Replicator) -> PlayerReplicationData,
 	_prepareReplication: (self: Replicator) -> (),
 	_setState: (self: Replicator, state: string, value: any, players: { Player }?) -> (),
@@ -372,6 +373,10 @@ function Replicator:_prepareReplication()
 			}, { player :: Player })
 		end
 	end)
+end
+
+function Replicator:set(state: string, value: any, players: { Player }?)
+	self:_setState(state, value, players)
 end
 
 function Replicator:_setState(state: string, value: any, players: { Player }?)
