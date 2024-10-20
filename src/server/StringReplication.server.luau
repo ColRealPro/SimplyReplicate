@@ -59,7 +59,7 @@ for _, v in Players:GetPlayers() do
 end
 
 -- for _, v in Players:GetPlayers() do
--- 	print(`Data for {v.Name}:`, GameSt	ateReplicator:getForPlayer(v))
+-- 	print(`Data for {v.Name}:`, GameStateReplicator:getForPlayer(v))
 -- end
 
 -- while true do
