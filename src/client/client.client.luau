@@ -21,3 +21,5 @@ NilReplicator.StateChanged:Connect(function(state, value)
 	print("State changed", state, value)
 	print(NilReplicator:get())
 end)
+
+print(Replicator.getAllReplicators())
