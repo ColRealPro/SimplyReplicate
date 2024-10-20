@@ -26,6 +26,21 @@ local ExampleReplicator = Replicator.new("ExampleReplicator", {
 })
 ```
 
+:::tip Avoiding type errors
+When defining the default values, you should add an optional type cast so luau doesnt force you to include every state when using changeStates.
+
+```lua
+local ExampleReplicator = Replicator.new("ExampleReplicator", {
+	ExampleState = "ExampleValue" :: string?,
+	ExampleNumber = 0 :: number?,
+	ExampleBoolean = false :: boolean?,
+	ExampleTable = {
+		Very = "Cool"
+	} :: {string: string}?,
+})
+```
+:::
+
 :::tip Replicating nil
 If you want to replicate a state as `nil` you must use `Replicator.null` to do so, otherwise your state will not be replicated or registered.
 :::
@@ -60,7 +75,9 @@ This will only fire when the `ExampleState` state is changed, and will provide t
 
 ## Changing States
 
-To change a state in the replicator, you can use the `changeStates` method. This method will take a table of states and their new values, and will replicate them to the client.
+<!-- To change a state in the replicator, you can use the `changeStates` method. This method will take a table of states and their new values, and will replicate them to the client. -->
+
+To change a state in the replicator, there are multiple ways you can do this. The first way is to use the `changeStates` method. This method will take a table of states and their new values, and will replicate them to the client.
 
 ```lua
 ExampleReplicator:changeStates({
@@ -75,25 +92,52 @@ ExampleReplicator:changeStates({
 
 :::tip Replicating nil
 If you want to replicate a state as `nil` you must use `Replicator.null` to do so, otherwise your state will not be replicated.
-This only applies to the `Replicator:changeStates` method and when creating the replicator.
+This only applies to the `changeStates` method and when creating the replicator.
 :::
+
+The second way is to use the `set` method to change a single state. This method will take the state and the new value as arguments, and will replicate it to the client.
+
+```lua
+ExampleReplicator:set("ExampleState", "NewValue")
+```
+
+The third way is to use the `getMutable` method to get a mutable version of the replicator data, and when you edit the data in this version, your changes will be automatically repliated to the client.
+
+```lua
+local data = ExampleReplicator:getMutable()
+data.ExampleState = "NewValue"
+```
 
 ## Specific Player States
 
 If you ever need to replicate different data to different players, you can do that very easily using the same replicator.
-In order to do this, you will need to use the `changeStates` method the same way you would normally, but instead, you will specify the players you want to replicate the data to.
+In order to do this, you will need to use the `changeStates` or `set` method the same way you would normally, but instead, you will specify the players you want to replicate the data to.
 
 ```lua
 -- Replicating to a specific player
 ExampleReplicator:changeStates({
 	ExampleState = "NewValue"
 }, player)
+ExampleReplicator:set("ExampleState", "NewValue", player)
 
 -- Replicating to multiple players
 ExampleReplicator:changeStates({
 	ExampleState = "NewValue"
 }, { player1, player2, player3 })
+ExampleReplicator:set("ExampleState", "NewValue", { player1, player2, player3 })
 ```
+
+:::tip
+If you are using `getMutable` to change data, you can supply the players you want to replicate the data to as the first argument.
+
+```lua
+local data = ExampleReplicator:getMutable(player)
+data.ExampleState = "NewValue" -- Only player will receive this change
+
+local data = ExampleReplicator:getMutable({ player1, player2, player3 })
+data.ExampleState = "NewValue" -- Only player1, player2, and player3 will receive this change
+```
+:::
 
 To the clients, this will act the exact same as if you were to change the states normally, but only the specified players will receive the new data, and they will still receive state updates that are not player specific as well.
 On top of this, the server will store a copy of what each player has, so you can access the data for a specific player at any time (See [Accessing Data](#accessing-data) for more information).

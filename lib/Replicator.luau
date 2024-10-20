@@ -33,7 +33,7 @@ type ReplicatorImpl = {
 	new: (identifier: string | Instance, data: data) -> Replicator,
 	changeStates: (self: Replicator, changedStates: data, players: ({ Player } | Player)?) -> (),
 	syncPlayer: (self: Replicator, player: Player) -> (),
-	set: (self: Replicator, state: string, value: any, players: { Player }?) -> (),
+	set: (self: Replicator, state: string, value: any, players: ({ Player } | Player)?) -> (),
 	_generatePlayerReplicationDataTemplate: (self: Replicator) -> PlayerReplicationData,
 	_prepareReplication: (self: Replicator) -> (),
 	_setState: (self: Replicator, state: string, value: any, players: { Player }?) -> (),
@@ -446,7 +446,7 @@ end
 	@error "Invalid state" -- Thrown when the state does not exist in the data structure
 	@server
 ]=]
-function Replicator:set(state: string, value: any, players: { Player }?)
+function Replicator:set(state: string, value: any, players: ({ Player } | Player)?)
 	if self._context == "Client" then
 		error("This function can only be called on the server", 2)
 	end
@@ -455,7 +455,9 @@ function Replicator:set(state: string, value: any, players: { Player }?)
 		error(string.format("Invalid state %s, does not exist in the data structure.", tostring(state)), 2)
 	end
 
-	self:_setState(state, value, players)
+	local playersTbl = type(players) == "table" and players or { players :: Player }
+
+	self:_setState(state, value, playersTbl)
 end
 
 function Replicator:_setState(state: string, value: any, players: { Player }?)
