@@ -59,7 +59,7 @@ for _, v in Players:GetPlayers() do
 end
 
 -- for _, v in Players:GetPlayers() do
--- 	print(`Data for {v.Name}:`, GameStateReplicator:getForPlayer(v))
+-- 	print(`Data for {v.Name}:`, GameSt	ateReplicator:getForPlayer(v))
 -- end
 
 -- while true do
@@ -70,3 +70,10 @@ end
 
 -- 	task.wait(1)
 -- end
+
+task.wait(3)
+GameStateReplicator:addState("newState", "Hello world")
+
+task.wait(3)
+
+GameStateReplicator:set("newState", "Hello world2")
