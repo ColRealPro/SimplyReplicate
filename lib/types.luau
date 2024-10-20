@@ -17,6 +17,7 @@ export type Replicator<T> = {
 
 export type ReplicatorConstructor = {
 	new: <T>(identifier: string | Instance, data: T?, useBuffer: boolean?) -> Replicator<T>,
+	getAllReplicators: () -> { [string | Instance]: Replicator<any> },
 	null: null,
 }
 

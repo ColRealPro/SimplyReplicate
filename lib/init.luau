@@ -6,6 +6,7 @@ export type null = types.null
 return (
 	table.freeze({
 		new = Replicator.new,
+		getAllReplicators = Replicator.getAllReplicators,
 		null = Replicator.null,
 	}) :: any
 ) :: types.ReplicatorConstructor

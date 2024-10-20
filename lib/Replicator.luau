@@ -31,6 +31,7 @@ type ReplicatorImpl = {
 	null: typeof(newproxy(true)),
 
 	new: (identifier: string | Instance, data: data) -> Replicator,
+	getAllReplicators: () -> { [string | Instance]: Replicator },
 	changeStates: (self: Replicator, changedStates: data, players: ({ Player } | Player)?) -> (),
 	syncPlayer: (self: Replicator, player: Player) -> (),
 	set: (self: Replicator, state: string, value: any, players: ({ Player } | Player)?) -> (),
@@ -86,6 +87,8 @@ type Replicator = typeof(setmetatable(
 	},
 	{} :: ReplicatorImpl
 ))
+
+local AllReplicators = {}
 
 local REPLICATOR_NIL = newproxy(true)
 local REPLICATOR_NIL_MT = getmetatable(REPLICATOR_NIL)
@@ -252,7 +255,13 @@ function Replicator.new<T>(identifier: string | Instance, data: T?, useBuffer: b
 		end)
 	end
 
+	AllReplicators[identifier] = self
+
 	return self
+end
+
+function Replicator.getAllReplicators()
+	return AllReplicators
 end
 
 --[=[
@@ -848,6 +857,8 @@ end
 function Replicator:Destroy()
 	self._networkManager:Destroy()
 	self._maid:DoCleaning()
+
+	AllReplicators[self.identifier] = nil
 
 	table.clear(self :: any)
 	setmetatable(self :: any, {
