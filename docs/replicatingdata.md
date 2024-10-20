@@ -108,6 +108,14 @@ local data = ExampleReplicator:getMutable()
 data.ExampleState = "NewValue"
 ```
 
+## Adding new states
+
+If you want to add a new state to the replicator after it has been created, you can use the `addState` method. This will avoid the errors that would be thrown if you tried to change a state that wasn't specified when creating the replicator, and allow you to use the new state like any other.
+
+```lua
+ExampleReplicator:addState("NewState", "NewValue")
+```
+
 ## Specific Player States
 
 If you ever need to replicate different data to different players, you can do that very easily using the same replicator.

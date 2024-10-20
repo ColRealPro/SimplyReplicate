@@ -70,3 +70,10 @@ end
 
 -- 	task.wait(1)
 -- end
+
+task.wait(3)
+GameStateReplicator:addState("newState", "Hello world")
+
+task.wait(3)
+
+GameStateReplicator:set("newState", "Hello world2")

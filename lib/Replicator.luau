@@ -34,6 +34,7 @@ type ReplicatorImpl = {
 	changeStates: (self: Replicator, changedStates: data, players: ({ Player } | Player)?) -> (),
 	syncPlayer: (self: Replicator, player: Player) -> (),
 	set: (self: Replicator, state: string, value: any, players: ({ Player } | Player)?) -> (),
+	addState: (self: Replicator, state: string, initialValue: any) -> (),
 	_generatePlayerReplicationDataTemplate: (self: Replicator) -> PlayerReplicationData,
 	_prepareReplication: (self: Replicator) -> (),
 	_setState: (self: Replicator, state: string, value: any, players: { Player }?) -> (),
@@ -46,6 +47,7 @@ type ReplicatorImpl = {
 			syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? }?,
 			nullData: { string }?,
 			updateData: { [string]: any },
+			newStates: { string }?,
 		}
 	) -> (),
 	get: (self: Replicator, index: string?) -> { [string]: any } | any,
@@ -73,6 +75,7 @@ type Replicator = typeof(setmetatable(
 					SyncOrderTime: number,
 				}
 			},
+			NewStates: { string },
 		},
 		-- _dataStructure: DataStructure,
 		_localDataCopy: DataStructure,
@@ -208,6 +211,7 @@ function Replicator.new<T>(identifier: string | Instance, data: T?, useBuffer: b
 		self._replicationNeeded = {
 			Updates = {},
 			Syncs = {},
+			NewStates = {},
 		}
 
 		for state, value in data do
@@ -242,6 +246,7 @@ function Replicator.new<T>(identifier: string | Instance, data: T?, useBuffer: b
 					syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? }?,
 					updateData: { [string]: any },
 					nullData: { string }?,
+					newStates: { string }?,
 				})
 			end
 		end)
@@ -335,6 +340,7 @@ function Replicator:_prepareReplication()
 		self._replicationNeeded = {
 			Updates = {},
 			Syncs = {},
+			NewStates = {},
 		}
 
 		local replicationData = {
@@ -418,6 +424,7 @@ function Replicator:_prepareReplication()
 			identifier = self.identifier,
 			updateData = replicationData["$all"].updateData,
 			nullData = replicationData["$all"].nullData,
+			newStates = replicationNeeded.NewStates,
 		})
 
 		for player: Player | string, data in replicationData do
@@ -438,8 +445,6 @@ end
 --[=[
 	Sets a state to a specific value
 
-	TODO: ADD SUPPORT FOR ERROR HANDLING! (PLAESE DONT APPROVE PR IF THIS IS NOT DONE)
-
 	@param state string -- The state to change
 	@param value any -- The value to set the state to
 	@param players { Player }? -- If provided, the state will only be changed for the given players
@@ -457,7 +462,30 @@ function Replicator:set(state: string, value: any, players: ({ Player } | Player
 
 	local playersTbl = type(players) == "table" and players or { players :: Player }
 
-	self:_setState(state, value, playersTbl)
+	self:_setState(state, value, players and playersTbl)
+end
+
+--[=[
+	Adds a new state to the replicator
+
+	@param state string -- The state to add
+	@param initialValue any -- The initial value of the state
+	@error "State already exists" -- Thrown when the state already exists in the data structure
+	@server
+]=]
+function Replicator:addState(state: string, initialValue: any)
+	if self._context == "Client" then
+		error("This function can only be called on the server", 2)
+	end
+
+	if table.find(self._allExistingIndexes, state) then
+		error(string.format("State %s already exists in the data structure.", tostring(state)), 2)
+	end
+
+	table.insert(self._allExistingIndexes, state)
+	table.insert(self._replicationNeeded.NewStates, state)
+
+	self:_setState(state, initialValue)
 end
 
 function Replicator:_setState(state: string, value: any, players: { Player }?)
@@ -553,6 +581,7 @@ function Replicator:_recieveUpdate(data: {
 	syncData: { Remove: { string }?, Modify: { { Index: string, NewValue: any } }? }?,
 	nullData: { string }?,
 	updateData: { [string]: any },
+	newStates: { string }?,
 })
 	-- for state, value in data do
 	-- 	self._localDataCopy[state] = value
@@ -567,6 +596,13 @@ function Replicator:_recieveUpdate(data: {
 	local syncData = data.syncData
 	local updateData = data.updateData
 	local nullData = data.nullData
+	local newStates = data.newStates
+
+	if newStates then
+		for _, state in newStates do
+			table.insert(self._allExistingIndexes, state)
+		end
+	end
 
 	if syncData then
 		local remove = syncData.Remove
