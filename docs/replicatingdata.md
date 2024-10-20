@@ -26,6 +26,10 @@ local ExampleReplicator = Replicator.new("ExampleReplicator", {
 })
 ```
 
+:::tip Replicating nil
+If you want to replicate a state as `nil` you must use `Replicator.null` to do so, otherwise your state will not be replicated or registered.
+:::
+
 **Client:**
 ```lua
 local Replicator = require(path.to.module)
@@ -68,6 +72,11 @@ ExampleReplicator:changeStates({
 	}
 })
 ```
+
+:::tip Replicating nil
+If you want to replicate a state as `nil` you must use `Replicator.null` to do so, otherwise your state will not be replicated.
+This only applies to the `Replicator:changeStates` method and when creating the replicator.
+:::
 
 ## Specific Player States
 

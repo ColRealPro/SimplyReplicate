@@ -22,6 +22,7 @@ local GameStateReplicator = Replicator.new(
 )
 
 task.wait(5)
+-- if true then return end
 
 -- GameStateReplicator:changeStates({
 -- 	status = "SHARED!!!!",
