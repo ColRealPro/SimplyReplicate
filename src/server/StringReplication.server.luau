@@ -18,7 +18,10 @@ local GameStateReplicator = Replicator.new(
 				}
 			}
 		},
-	}
+
+		InstanceTest = workspace,
+	},
+	true
 )
 
 task.wait(5)
@@ -77,3 +80,8 @@ GameStateReplicator:addState("newState", "Hello world")
 task.wait(3)
 
 GameStateReplicator:set("newState", "Hello world2")
+
+task.wait(2)
+GameStateReplicator:getMutable().InstanceTest = game.ReplicatedStorage
+task.wait(2)
+GameStateReplicator:getMutable().InstanceTest = workspace
