@@ -5,6 +5,8 @@ export type Replicator<T> = {
 	changeStates: (self: Replicator<T>, changedStates: T, players: ({ Player } | Player)?) -> (),
 	get: (self: Replicator<T>, index: string?) -> T,
 	set: (self: Replicator<T>, state: string, value: any, players: ({ Player } | Player)?) -> (),
+	localOverrideState: (self: Replicator<T>, state: string, value: any) -> (),
+	removeOverrideState: (self: Replicator<T>, state: string) -> (),
 	addState: (self: Replicator<T>, state: string, initialValue: any) -> (),
 	getMutable: (self: Replicator<T>, players: ({ Player } | Player)?) -> T,
 	getForPlayer: (self: Replicator<T>, player: Player, index: string?) -> T,
