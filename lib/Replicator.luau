@@ -35,6 +35,8 @@ type ReplicatorImpl = {
 	changeStates: (self: Replicator, changedStates: data, players: ({ Player } | Player)?) -> (),
 	syncPlayer: (self: Replicator, player: Player) -> (),
 	set: (self: Replicator, state: string, value: any, players: ({ Player } | Player)?) -> (),
+	localOverrideState: (self: Replicator, state: string, value: any) -> (),
+	removeOverrideState: (self: Replicator, state: string) -> (),
 	addState: (self: Replicator, state: string, initialValue: any) -> (),
 	_generatePlayerReplicationDataTemplate: (self: Replicator) -> PlayerReplicationData,
 	_prepareReplication: (self: Replicator) -> (),
@@ -81,6 +83,7 @@ type Replicator = typeof(setmetatable(
 		-- _dataStructure: DataStructure,
 		_localDataCopy: DataStructure,
 		_userStateCopies: { [Player]: DataStructure },
+		_overrideStates: { [string]: any },
 		_originalDataStructure: { [string]: any },
 		_allExistingIndexes: { string },
 		StateChanged: Signal.Signal<string, any>,
@@ -191,6 +194,7 @@ function Replicator.new<T>(identifier: string | Instance, data: T?, useBuffer: b
 	self._isPlayer = typeof(identifier) == "Instance" and identifier:IsA("Player")
 	self._context = RunService:IsServer() and "Server" or "Client"
 	self._userStateCopies = {}
+	self._overrideStates = {}
 	self._allExistingIndexes = {}
 
 	-- // Signals
@@ -475,6 +479,47 @@ function Replicator:set(state: string, value: any, players: ({ Player } | Player
 end
 
 --[=[
+	Overrides a state on the client
+
+	@param state string -- The state to override
+	@param value any -- The value to set the state to
+	@error "Invalid state" -- Thrown when the state does not exist in the data structure
+	@client
+]=]
+function Replicator:localOverrideState(state: string, value: any)
+	if self._context == "Server" then
+		error("This function can only be called on the client", 2)
+	end
+
+	if not table.find(self._allExistingIndexes, state) then
+		error(string.format("Invalid state %s, does not exist in the data structure.", tostring(state)), 2)
+	end
+
+	self._overrideStates[state] = value
+	self.StateChanged:Fire(state, value)
+end
+
+--[=[
+	Removes an override state on the client
+
+	@param state string -- The state to remove the override from
+	@error "Invalid state" -- Thrown when the state does not exist in the data structure
+	@client
+]=]
+function Replicator:removeOverrideState(state: string)
+	if self._context == "Server" then
+		error("This function can only be called on the client", 2)
+	end
+
+	if not table.find(self._allExistingIndexes, state) then
+		error(string.format("Invalid state %s, does not exist in the data structure.", tostring(state)), 2)
+	end
+
+	self._overrideStates[state] = nil
+	self.StateChanged:Fire(state, self._localDataCopy[state])
+end
+
+--[=[
 	Adds a new state to the replicator
 
 	@param state string -- The state to add
@@ -626,6 +671,10 @@ function Replicator:_recieveUpdate(data: {
 						return
 					end
 
+					if self._overrideStates[state] ~= nil then
+						return
+					end
+
 					self.StateChanged:Fire(state, nil)
 				end)
 			end
@@ -648,6 +697,10 @@ function Replicator:_recieveUpdate(data: {
 						return
 					end
 
+					if self._overrideStates[index] ~= nil then
+						return
+					end
+
 					self.StateChanged:Fire(index, newValue)
 				end)
 			end
@@ -660,6 +713,10 @@ function Replicator:_recieveUpdate(data: {
 
 			task.defer(function()
 				if self._localDataCopy[state] then
+					return
+				end
+
+				if self._overrideStates[state] ~= nil then
 					return
 				end
 
@@ -676,6 +733,10 @@ function Replicator:_recieveUpdate(data: {
 				return
 			end
 
+			if self._overrideStates[state] ~= nil then
+				return
+			end
+
 			self.StateChanged:Fire(state, value)
 		end)
 	end
@@ -689,7 +750,7 @@ end
 ]=]
 function Replicator:get(index: string?): { [string]: any } | any
 	if index then
-		return self._localDataCopy[index]
+		return self._overrideStates[index] or self._localDataCopy[index]
 	end
 
 	local dataStructure = self._localDataCopy
@@ -697,6 +758,10 @@ function Replicator:get(index: string?): { [string]: any } | any
 
 	-- Manually clone the table to remove the metatable
 	for state, value in next, dataStructure do
+		data[state] = value
+	end
+
+	for state, value in next, self._overrideStates do
 		data[state] = value
 	end
 
