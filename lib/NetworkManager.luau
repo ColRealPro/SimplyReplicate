@@ -97,6 +97,8 @@ function NetworkManager._init()
 			useBuffer = manager._useBuffer,
 		}
 
+		manager:parseFixedData(rawData, extraArgs)
+
 		return extraArgs, finalizedData
 	end
 
@@ -259,6 +261,8 @@ function NetworkManager:send(tag: string, data: any, players: { Player }?)
 
 	local FixedData, ExtraArgs = self:fixData(data)
 	local compressedData = self._useBuffer and msgpack.utf8Encode(msgpack.encode(FixedData)) or data
+
+	self:parseFixedData(data, ExtraArgs)
 
 	print("ExtraArgs", ExtraArgs)
 
